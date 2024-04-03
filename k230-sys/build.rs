@@ -13,4 +13,7 @@ fn main() {
         "riscv64gc-unknown-linux-musl" => TARGET::BigCore,
         _ => panic!("This crate should not be built for the host architecture"),
     };
+
+    let sdk_path = env::var("K230_SDK_PATH").expect("Env K230_SDK_PATH not set");
+
 }
