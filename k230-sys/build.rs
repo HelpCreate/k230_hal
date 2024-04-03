@@ -9,8 +9,8 @@ fn main() {
         BigCore,
     }
     let target = match target.as_str() {
-        "riscv32imac-unknown-none-elf" => TARGET::LittleCore,
-        "riscv64imac-unknown-none-elf" => TARGET::BigCore,
+        "riscv64gc-unknown-linux-gnu" => TARGET::LittleCore,
+        "riscv64gc-unknown-linux-musl" => TARGET::BigCore,
         _ => panic!("This crate should not be built for the host architecture"),
     };
 }
