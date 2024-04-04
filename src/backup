@@ -1,0 +1,52 @@
+
+use std::{ffi::c_char, ptr};
+
+use k230_sys::{
+    self, k_ipcmsg_connect_t, k_ipcmsg_handle_fn_ptr, k_s32, kd_ipcmsg_add_service,
+    kd_ipcmsg_connect,
+};
+
+enum CORE {
+    Little,
+    Big,
+}
+const WHICH_CORE: CORE = if cfg!(musl) { CORE::Big } else { CORE::Little };
+
+pub struct Connection {
+    port: u16,
+}
+impl Connection {
+    pub fn new(port: u16, higher_priority: bool) -> Self {
+        assert!(port < 512);
+        let connection_config = k_ipcmsg_connect_t {
+            u32RemoteId: WHICH_CORE as u32,
+            u32Port: port.into(),
+            u32Priority: higher_priority.into(),
+        };
+        unsafe {
+            if kd_ipcmsg_add_service(
+                port as *const c_char,
+                &connection_config as *const k_ipcmsg_connect_t,
+            ) != 0
+            {
+                panic!("Failed init");
+            }
+        }
+
+        Self { port }
+    }
+    pub fn connect(&self, callback: fn()) {
+
+        fn on_message_received() {
+        }
+        let message_handle: *mut k_s32 = ptr::null_mut();
+        let callback: k_ipcmsg_handle_fn_ptr = Some());
+        unsafe {
+            kd_ipcmsg_connect(
+                message_handle as *mut k_s32,
+                self.port as *const u8,
+                callback,
+            );
+        }
+    }
+}

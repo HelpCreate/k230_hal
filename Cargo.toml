@@ -1,4 +1,4 @@
-workspace = { members = ["k230-sys"] }
+workspace = { members = [ "k230-macros","k230-sys"] }
 [package]
 name = "k230_hal"
 version = "0.1.0"
@@ -8,3 +8,6 @@ edition = "2021"
 
 [dependencies]
 k230-sys = { path = "k230-sys" }
+k230-macros = { path = "k230-macros" }
+static_assertions = "1.1.0"
+

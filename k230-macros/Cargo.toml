@@ -1,0 +1,10 @@
+[package]
+name = "k230-macros"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+

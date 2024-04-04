@@ -3,10 +3,11 @@ target = "riscv64gc-unknown-linux-gnu"
 
 [target.riscv64gc-unknown-linux-gnu]
 rustflags = [
-    "-C", "link-arg=--sysroot=./230_sdk/toolchain/Xuantie-900-gcc-linux-5.10.4-glibc-x86_64-V2.6.0/sysroot",
+    "-C", "link-arg=--sysroot=./k230-sys/k230_sdk/toolchain/Xuantie-900-gcc-linux-5.10.4-glibc-x86_64-V2.6.0/sysroot",
 ]
-linker = "./k230_sdk/toolchain/Xuantie-900-gcc-linux-5.10.4-glibc-x86_64-V2.6.0/bin/riscv64-unknown-linux-gnu-gcc"
-ar = "./k230_sdk/toolchain/Xuantie-900-gcc-linux-5.10.4-glibc-x86_64-V2.6.0/bin/riscv64-unknown-linux-gnu-ar"
+linker = "./k230-sys/k230_sdk/toolchain/Xuantie-900-gcc-linux-5.10.4-glibc-x86_64-V2.6.0/bin/riscv64-unknown-linux-gnu-gcc"
+ar = "./k230-sys/k230_sdk/toolchain/Xuantie-900-gcc-linux-5.10.4-glibc-x86_64-V2.6.0/bin/riscv64-unknown-linux-gnu-ar"
 
 [env]
 K230_SDK_PATH = { value = "./k230_sdk", relative = true, force = true}
+K230_CROSS_CORE_CONFIG_FILE = { value = ".config", relative = true, force = true}
