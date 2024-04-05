@@ -1,1 +1,1 @@
-pub mod ipmsg;
+pub mod ipcmsg;
