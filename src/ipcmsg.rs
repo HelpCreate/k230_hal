@@ -12,10 +12,6 @@ use k230_sys::{
 use super::WHICH_CORE; 
 
 
-pub struct ReceiveCallback<T> {
-    callback: fn(T),
-    id: u32,
-}
 
 pub struct Connection {
     port: u16,
@@ -40,7 +36,8 @@ impl Connection {
 
         Self { port }
     }
-    pub fn connect(&self, callbacks: &[ReceiveCallback]) {
+    pub fn connect(&self, (callbacks,id): (impl FnOnce(),u32)) { // TODO input params of the
+        // callback
 
         extern "C" fn on_message_received(msg_id: k_s32, p_msg: *mut k_ipcmsg_message_t) {
             let msg = unsafe {
@@ -48,8 +45,7 @@ impl Connection {
             };
 
             
-            
-            
+     
             
         }
         let connection_handler: *mut k_s32 = ptr::null_mut();
@@ -61,6 +57,15 @@ impl Connection {
                 callback,
             );
         }
+    }
+    pub fn send_only() {
+        // TODO
+    }
+    pub fn send_response_blocking() {
+        // TODO
+    }
+    pub fn send_response_() {
+        // TODO
     }
 }
 
