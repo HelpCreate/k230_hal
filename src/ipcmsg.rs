@@ -1,6 +1,5 @@
 use k230_sys::k_ipcmsg_message_t;
-pub fn send(receiver: fn()) {
-}
+pub fn send(receiver: fn()) {}
 
 use std::{ffi::c_char, ptr};
 
@@ -9,15 +8,14 @@ use k230_sys::{
     kd_ipcmsg_connect,
 };
 
-use super::WHICH_CORE; 
-
-
+use super::WHICH_CORE;
 
 pub struct Connection {
     port: u16,
+    name: String,
 }
 impl Connection {
-    pub fn new(port: u16, higher_priority: bool) -> Self {
+    pub fn new(port: u16, name: String, higher_priority: bool) -> Self {
         assert!(port < 512);
         let connection_config = k_ipcmsg_connect_t {
             u32RemoteId: WHICH_CORE as u32,
@@ -26,7 +24,7 @@ impl Connection {
         };
         unsafe {
             if kd_ipcmsg_add_service(
-                port as *const c_char,
+                name.as_ptr() as *const c_char,
                 &connection_config as *const k_ipcmsg_connect_t,
             ) != 0
             {
@@ -34,19 +32,19 @@ impl Connection {
             }
         }
 
-        Self { port }
+        Self { port, name }
     }
-    pub fn connect(&self, (callbacks,id): (impl FnOnce(),u32)) { // TODO input params of the
+    pub fn connect(&self, (callback, name): &[(impl 'static + Fn(), &str)]) {
+        // TODO input params of the
         // callback
 
         extern "C" fn on_message_received(msg_id: k_s32, p_msg: *mut k_ipcmsg_message_t) {
-            let msg = unsafe {
-             p_msg.read()   
-            };
-
-            
-     
-            
+            let msg = unsafe { p_msg.read() };
+            for n in name {
+                if msg.u32CMD == n {
+                    callback();
+                }
+            }
         }
         let connection_handler: *mut k_s32 = ptr::null_mut();
         let callback: k_ipcmsg_handle_fn_ptr = Some(on_message_received);
@@ -68,5 +66,3 @@ impl Connection {
         // TODO
     }
 }
-
-
