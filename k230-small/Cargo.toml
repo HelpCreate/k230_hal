@@ -1,11 +1,8 @@
-workspace = { members = [ "k230-sys"] }
 [package]
-name = "k230_hal"
+name = "k230-small"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-k230-sys = { path = "k230-sys" }
-

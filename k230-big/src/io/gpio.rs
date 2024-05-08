@@ -1,4 +1,3 @@
-
 pub enum GpioMode {
     Input,
     Output,
