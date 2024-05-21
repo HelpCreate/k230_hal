@@ -1,5 +1,5 @@
 [package]
-name = "k230-sys"
+name = "k230-sys-big"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"

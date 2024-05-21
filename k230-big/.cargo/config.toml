@@ -1,0 +1,12 @@
+[target.riscv64gc-unknown-linux-musl]
+rustflags = [
+"-L/home/neb/Github/k230_hal/k230-big/k230-sys-big/k230_sdk/toolchain/riscv64-linux-musleabi_for_x86_64-pc-linux-gnu/sysroot/lib",
+"-L/home/neb/Github/k230_hal/k230-big/k230-sys-big/k230_sdk/toolchain/riscv64-linux-musleabi_for_x86_64-pc-linux-gnu/lib/gcc/riscv64-unknown-linux-musl/12.0.1",
+"-L/home/neb/Github/k230_hal/k230-big/k230-sys-big/k230_sdk/toolchain/riscv64-linux-musleabi_for_x86_64-pc-linux-gnu/sysroot",
+"-C", "link-args=-lc",
+"-C", "prefer-dynamic",
+"-C", "target-feature=-crt-static"
+]
+ar = "riscv64-unknown-linux-musl-ar"
+linker = "riscv64-unknown-linux-musl-gcc"
+
