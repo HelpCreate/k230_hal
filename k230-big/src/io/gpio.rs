@@ -1,11 +1,17 @@
-use k230_sys_big::gpio::{self, kd_pin_mode, kd_pin_write};
+// Import the necessary traits
+use core::fmt::Debug;
+use core::clone::Clone;
+use core::marker::Copy;
 
+
+use core::prelude::rust_2024::derive;
+
+use k230_sys_big::gpio::{self, kd_pin_mode, kd_pin_write};
 
 #[derive(Debug, Clone, Copy)]
 pub enum GpioMode {
     Input = gpio::_gpio_drive_mode_GPIO_DM_INPUT as isize,
     Output = gpio::_gpio_drive_mode_GPIO_DM_OUTPUT as isize,
-
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -27,28 +33,36 @@ pub enum Pin {
     Pin14,
     Pin15,
 }
-pub enum GpioState { 
+
+#[derive(Debug, Clone, Copy)]
+pub enum GpioState {
     LOW,
     HIGH,
-    
 }
 
 pub struct Gpio {
     pin: Pin,
     mode: GpioMode,
 }
+
 impl Gpio {
     pub fn new(pin: Pin, mode: GpioMode) -> Self {
         unsafe { kd_pin_mode(pin as i32, mode as i32) }
         Self { pin, mode }
     }
-    pub fn set(&self, value: GpioState) { 
-        unsafe { kd_pin_write(self.pin as i32, value as i32) }
 
-    
+    pub fn set(&self, value: GpioState) {
+        unsafe { kd_pin_write(self.pin as i32, value as i32) }
     }
+
     pub fn get(&self) -> bool {
         // TODO
         false
     }
 }
+
+fn main() {
+    let gpio = Gpio::new(Pin::Pin0, GpioMode::Output);
+    gpio.set(GpioState::HIGH);
+}
+

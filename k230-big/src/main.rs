@@ -1,9 +1,15 @@
 
-use k230_big::io::gpio::{Gpio, Pin, GpioMode, GpioState};
-fn main() { 
-    let pin9 = Gpio::new(Pin::Pin9, GpioMode::Output);
-    pin9.set(GpioState::HIGH);
+#![no_std]
+#![no_main]
 
-    println!("pin 9 set");
-    
+use core::panic::PanicInfo;
+// use k230_big::io::gpio::{Gpio, Pin, GpioMode, GpioState};
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {}
+}
+
+#[no_mangle]
+pub extern "C" fn main() -> ! {
+    loop {}
 }
