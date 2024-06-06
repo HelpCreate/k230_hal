@@ -1,15 +1,15 @@
-use std::{ffi::{c_char, c_void}, ptr, mem};
+use std::{ffi::{c_char, c_void}, ptr, mem };
 
 use k230_sys::{
     self, k_ipcmsg_connect_t,  k_ipcmsg_message_t, k_s32,
-    kd_ipcmsg_add_service, kd_ipcmsg_connect, kd_ipcmsg_del_service, kd_ipcmsg_disconnect, kd_ipcmsg_create_message, kd_ipcmsg_create_resp_message, kd_ipcmsg_destroy_message, kd_ipcmsg_send_only, kd_ipcmsg_send_sync, kd_ipcmsg_send_async,
+    kd_ipcmsg_add_service, kd_ipcmsg_connect, kd_ipcmsg_del_service, kd_ipcmsg_disconnect, kd_ipcmsg_create_message, kd_ipcmsg_create_resp_message, kd_ipcmsg_destroy_message, kd_ipcmsg_send_only, kd_ipcmsg_send_sync, kd_ipcmsg_send_async, kd_ipcmsg_run,
 };
 
 pub struct Service {
     name: String,
 }
 impl Service {
-    pub fn new(port: u16, name: String, higher_priority: bool) -> Self {
+    pub fn new(port: u16, name: String, higher_priority: bool) -> Result<Self,()> {
         assert!(port < 512);
         let connection_config = k_ipcmsg_connect_t {
             u32RemoteId: 0,
@@ -22,23 +22,24 @@ impl Service {
                 &connection_config as *const k_ipcmsg_connect_t,
             ) != 0
             {
-                panic!("Failed init");
+                return Err(());
             }
         }
-
-        Self { name }
+        Ok(Self { name })
     }
-    pub fn connect<T>(&mut self, message_handel:Option<unsafe extern "C" fn(i32, *mut k_ipcmsg_message_t)>) -> Connection { 
+    pub fn connect<T>(&mut self, message_handel:Option<unsafe extern "C" fn(i32, *mut k_ipcmsg_message_t)>) -> Result<Connection,()> { 
         let connection_handler: *mut k_s32 = ptr::null_mut();
         unsafe {
-            kd_ipcmsg_connect(
+            if 0 != kd_ipcmsg_connect(
                 connection_handler as *mut k_s32,
                 self.name.as_ptr() as *const c_char,
                 message_handel,
-            );
+            ) {
+                return Err(());
+            }
         }
 
-        return Connection::new(connection_handler as i32);
+        return Ok(Connection::new(connection_handler as i32));
     }
 }
 impl Drop for Service {
@@ -55,21 +56,29 @@ impl Connection {
     pub fn new(communication_id: i32) -> Self {
         Self { communication_id }
     }
-    pub fn send_only(self, mut message: Message) {
-        unsafe {kd_ipcmsg_send_only(self.communication_id,&mut message.0);}
+    pub fn start(self) {
+        unsafe {kd_ipcmsg_run(self.communication_id);}
+    }
+    pub fn send_only(self, mut message: Message) -> Result<(),()> {
+        unsafe {
+            if 0 != kd_ipcmsg_send_only(self.communication_id,&mut message.0) {return Err(())}
+            else {return Ok(())}
+        }
 
     }
-    pub fn send_response_blocking(self,mut message: Message, until_timeout : u16) -> Result<Message,&'static str> {
+    pub fn send_response_blocking(self,mut message: Message, until_timeout : u16) -> Result<Message,()> {
         unsafe {
             let response_message = ptr::null_mut();
-            if 0 ==  kd_ipcmsg_send_sync(self.communication_id, &mut message.0, response_message, until_timeout as i32)
-            { return Err("error happend");} 
+            if 0 !=  kd_ipcmsg_send_sync(self.communication_id, &mut message.0, response_message, until_timeout as i32)
+            { return Err(());} 
             else {return Ok(Message::new(**response_message))}
         }
     }
-    pub fn send_response_async<F>(self,mut message: Message, handel_response : Option<unsafe extern "C" fn(*mut k230_sys::IPCMSG_MESSAGE_S)>) { 
+    pub fn send_response_async<F>(self,mut message: Message, handel_response : Option<unsafe extern "C" fn(*mut k230_sys::IPCMSG_MESSAGE_S)>) -> Result<(), ()>{ 
         unsafe {
-            kd_ipcmsg_send_async(self.communication_id, &mut message.0,handel_response);
+            if 0 != kd_ipcmsg_send_async(self.communication_id, &mut message.0,handel_response) {return Err(())}
+            else {return Ok(())}
+
         }
     }
 }
