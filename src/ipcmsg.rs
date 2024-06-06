@@ -1,12 +1,11 @@
-use std::{ffi::c_char, ptr};
+use std::{ffi::{c_char, c_void}, ptr, mem};
 
 use k230_sys::{
-    self, k_ipcmsg_connect_t, k_ipcmsg_handle_fn_ptr, k_s32, kd_ipcmsg_add_service,
-    kd_ipcmsg_connect, kd_ipcmsg_del_service, kd_ipcmsg_disconnect, k_ipcmsg_message_t,
+    self, k_ipcmsg_connect_t,  k_ipcmsg_message_t, k_s32,
+    kd_ipcmsg_add_service, kd_ipcmsg_connect, kd_ipcmsg_del_service, kd_ipcmsg_disconnect, kd_ipcmsg_create_message, kd_ipcmsg_create_resp_message, kd_ipcmsg_destroy_message, kd_ipcmsg_send_only, kd_ipcmsg_send_sync, kd_ipcmsg_send_async,
 };
 
 pub struct Service {
-    port: u16,
     name: String,
 }
 impl Service {
@@ -27,27 +26,19 @@ impl Service {
             }
         }
 
-        Self { port, name }
+        Self { name }
     }
-    pub fn connect(&mut self, message_handel: k_ipcmsg_handle_fn_ptr) -> Connection {
-        let msg_handler : k_ipcmsg_handle_fn_ptr = Some(handel);
-
-        unsafe extern "C" fn handel(s32id : i32,pstMsg : *mut k_ipcmsg_message_t) {
-            
-        }
-
-
+    pub fn connect<T>(&mut self, message_handel:Option<unsafe extern "C" fn(i32, *mut k_ipcmsg_message_t)>) -> Connection { 
         let connection_handler: *mut k_s32 = ptr::null_mut();
         unsafe {
             kd_ipcmsg_connect(
                 connection_handler as *mut k_s32,
                 self.name.as_ptr() as *const c_char,
-                msg_handler,
+                message_handel,
             );
         }
-        
 
-        return Connection::new(connection_handler as i32)
+        return Connection::new(connection_handler as i32);
     }
 }
 impl Drop for Service {
@@ -56,25 +47,30 @@ impl Drop for Service {
             kd_ipcmsg_del_service(self.name.as_ptr() as *const c_char);
         }
     }
-    
 }
 pub struct Connection {
     communication_id: i32,
 }
 impl Connection {
     pub fn new(communication_id: i32) -> Self {
-        Self {
-            communication_id,
+        Self { communication_id }
+    }
+    pub fn send_only(self, mut message: Message) {
+        unsafe {kd_ipcmsg_send_only(self.communication_id,&mut message.0);}
+
+    }
+    pub fn send_response_blocking(self,mut message: Message, until_timeout : u16) -> Result<Message,&'static str> {
+        unsafe {
+            let response_message = ptr::null_mut();
+            if 0 ==  kd_ipcmsg_send_sync(self.communication_id, &mut message.0, response_message, until_timeout as i32)
+            { return Err("error happend");} 
+            else {return Ok(Message::new(**response_message))}
         }
     }
-    pub fn send_only() {
-        // TODO
-    }
-    pub fn send_response_blocking() {
-        // TODO
-    }
-    pub fn send_response_() {
-        // TODO
+    pub fn send_response_async<F>(self,mut message: Message, handel_response : Option<unsafe extern "C" fn(*mut k230_sys::IPCMSG_MESSAGE_S)>) { 
+        unsafe {
+            kd_ipcmsg_send_async(self.communication_id, &mut message.0,handel_response);
+        }
     }
 }
 impl Drop for Connection {
@@ -83,9 +79,34 @@ impl Drop for Connection {
             kd_ipcmsg_disconnect(self.communication_id);
         }
     }
-    
 }
 
+pub struct Message(k230_sys::k_ipcmsg_message_t);
+impl Message {
+    fn new(message: k230_sys::k_ipcmsg_message_t) -> Self {
+        Self(message)
+    }
+    pub fn create<T>(module_id : u32,cmd_id : u32, body : T) -> Self where T:Into<*mut c_void> {
+        unsafe {
+         let message = kd_ipcmsg_create_message(module_id, cmd_id,body.into(),mem::size_of::<T>() as u32);   
+            Self(*message)
+        }
+    }
+    pub fn create_response<T>(mut original_message : Message, message_handel : i32, body : T) -> Self where T : Into<*mut c_void>{
+        unsafe {
+         let message = kd_ipcmsg_create_resp_message(&mut original_message.0,message_handel, body.into() ,mem::size_of::<T>() as u32);   
+            Self(*message)
 
-struct Message; 
-
+        }
+        
+    }
+    
+}
+impl Drop for Message {
+    fn drop(&mut self) {
+         unsafe {
+             kd_ipcmsg_destroy_message(&mut self.0);
+         }
+    }
+    
+}
