@@ -9,5 +9,5 @@ build = "build.rs"
 [dependencies]
 
 [build-dependencies]
-bindgen = "0.69.4"
 build-target = "0.4.0"
+

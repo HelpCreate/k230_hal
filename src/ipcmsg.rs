@@ -1,15 +1,17 @@
 use std::{ffi::{c_char, c_void}, ptr, mem };
 
 use k230_sys::{
-    self, k_ipcmsg_connect_t,  k_ipcmsg_message_t, k_s32,
+    self, k_ipcmsg_connect_t, k_s32,
     kd_ipcmsg_add_service, kd_ipcmsg_connect, kd_ipcmsg_del_service, kd_ipcmsg_disconnect, kd_ipcmsg_create_message, kd_ipcmsg_create_resp_message, kd_ipcmsg_destroy_message, kd_ipcmsg_send_only, kd_ipcmsg_send_sync, kd_ipcmsg_send_async, kd_ipcmsg_run,
 };
 
+pub use k230_sys::k_ipcmsg_message_t;
+
 pub struct Service {
-    name: String,
+    name: &'static str
 }
 impl Service {
-    pub fn new(port: u16, name: String, higher_priority: bool) -> Result<Self,()> {
+    pub fn new(port: u16, name: &'static str, higher_priority: bool) -> Result<Self,()> {
         assert!(port < 512);
         let connection_config = k_ipcmsg_connect_t {
             u32RemoteId: 0,
@@ -27,7 +29,7 @@ impl Service {
         }
         Ok(Self { name })
     }
-    pub fn connect<T>(&mut self, message_handel:Option<unsafe extern "C" fn(i32, *mut k_ipcmsg_message_t)>) -> Result<Connection,()> { 
+    pub fn connect(&self, message_handel:Option<unsafe extern "C" fn(i32, *mut k_ipcmsg_message_t)>) -> Result<Connection,()> { 
         let connection_handler: *mut k_s32 = ptr::null_mut();
         unsafe {
             if 0 != kd_ipcmsg_connect(
@@ -90,26 +92,32 @@ impl Drop for Connection {
     }
 }
 
-pub struct Message(k230_sys::k_ipcmsg_message_t);
+pub struct Message(pub k230_sys::k_ipcmsg_message_t);
 impl Message {
-    fn new(message: k230_sys::k_ipcmsg_message_t) -> Self {
+    pub fn new(message: k230_sys::k_ipcmsg_message_t) -> Self {
         Self(message)
     }
-    pub fn create<T>(module_id : u32,cmd_id : u32, body : T) -> Self where T:Into<*mut c_void> {
+    pub fn create<T>(module_id : u32,cmd_id : u32, mut body : T) -> Self {
         unsafe {
-         let message = kd_ipcmsg_create_message(module_id, cmd_id,body.into(),mem::size_of::<T>() as u32);   
+            let body_ptr: *mut T = &mut body;
+         let message = kd_ipcmsg_create_message(module_id, cmd_id,body_ptr as *mut c_void,mem::size_of::<T>() as u32);   
             Self(*message)
         }
     }
-    pub fn create_response<T>(mut original_message : Message, message_handel : i32, body : T) -> Self where T : Into<*mut c_void>{
+    pub fn create_response<T>(mut original_message : Message, message_handel : i32, mut body : T) -> Self { 
         unsafe {
-         let message = kd_ipcmsg_create_resp_message(&mut original_message.0,message_handel, body.into() ,mem::size_of::<T>() as u32);   
+            let body_ptr: *mut T = &mut body;
+         let message = kd_ipcmsg_create_resp_message(&mut original_message.0,message_handel, body_ptr as *mut c_void,mem::size_of::<T>() as u32);   
             Self(*message)
 
         }
         
     }
-    
+        pub unsafe fn body_to_type<T>(self) -> T {
+        assert_eq!(self.0.u32BodyLen as usize, std::mem::size_of::<T>());
+        let body_ptr = self.0.pBody as *mut T;
+        body_ptr.read()
+    }
 }
 impl Drop for Message {
     fn drop(&mut self) {
