@@ -2,7 +2,7 @@ use std::{ffi::{c_char, c_void}, ptr, mem };
 
 use k230_sys::{
     self, k_ipcmsg_connect_t, k_s32,
-    kd_ipcmsg_add_service, kd_ipcmsg_connect, kd_ipcmsg_del_service, kd_ipcmsg_disconnect, kd_ipcmsg_create_message, kd_ipcmsg_create_resp_message, kd_ipcmsg_destroy_message, kd_ipcmsg_send_only, kd_ipcmsg_send_sync, kd_ipcmsg_send_async, kd_ipcmsg_run,
+    kd_ipcmsg_add_service, kd_ipcmsg_connect, kd_ipcmsg_del_service, kd_ipcmsg_disconnect, kd_ipcmsg_create_message, kd_ipcmsg_create_resp_message, kd_ipcmsg_destroy_message, kd_ipcmsg_send_only, kd_ipcmsg_send_sync, kd_ipcmsg_send_async, kd_ipcmsg_run, kd_ipcmsg_try_connect, kd_ipcmsg_is_connect,
 };
 
 pub use k230_sys::k_ipcmsg_message_t;
@@ -11,33 +11,50 @@ pub struct Service {
     name: &'static str
 }
 impl Service {
-    pub fn new(port: u16, name: &'static str, higher_priority: bool) -> Result<Self,()> {
+    pub fn new(port: u32, name: &'static str, higher_priority: bool) -> Result<Self,()> {
         assert!(port < 512);
         let connection_config = k_ipcmsg_connect_t {
-            u32RemoteId: 0,
-            u32Port: port.into(),
+            u32RemoteId: 1,
+            u32Port: port,
             u32Priority: higher_priority.into(),
         };
         unsafe {
-            if kd_ipcmsg_add_service(
+            let status = kd_ipcmsg_add_service(
                 name.as_ptr() as *const c_char,
                 &connection_config as *const k_ipcmsg_connect_t,
-            ) != 0
+            ); 
+            if status != 0 
             {
                 return Err(());
             }
         }
         Ok(Self { name })
     }
-    pub fn connect(&self, message_handel:Option<unsafe extern "C" fn(i32, *mut k_ipcmsg_message_t)>) -> Result<Connection,()> { 
+    pub fn connect(&self, message_handel:Option<unsafe extern "C" fn(i32, *mut k_ipcmsg_message_t)>) -> Result<Connection,i32> { 
         let connection_handler: *mut k_s32 = ptr::null_mut();
         unsafe {
-            if 0 != kd_ipcmsg_connect(
+            let status = kd_ipcmsg_connect(
                 connection_handler as *mut k_s32,
                 self.name.as_ptr() as *const c_char,
                 message_handel,
-            ) {
-                return Err(());
+            ) as i32;
+            if status != 0 {
+                return Err(status);
+            }
+        }
+
+        return Ok(Connection::new(connection_handler as i32));
+    }
+    pub fn try_connect(&self, message_handel:Option<unsafe extern "C" fn(i32, *mut k_ipcmsg_message_t)>) -> Result<Connection,i32> { 
+        let connection_handler: *mut k_s32 = ptr::null_mut();
+        unsafe {
+            let status = kd_ipcmsg_try_connect(
+                connection_handler as *mut k_s32,
+                self.name.as_ptr() as *const c_char,
+                message_handel,
+            ); 
+            if status != 0 {
+                return Err(status);
             }
         }
 
@@ -47,10 +64,11 @@ impl Service {
 impl Drop for Service {
     fn drop(&mut self) {
         unsafe {
-            kd_ipcmsg_del_service(self.name.as_ptr() as *const c_char);
+           // kd_ipcmsg_del_service(self.name.as_ptr() as *const c_char);
         }
     }
 }
+#[derive(Clone)]
 pub struct Connection {
     communication_id: i32,
 }
@@ -60,6 +78,9 @@ impl Connection {
     }
     pub fn start(self) {
         unsafe {kd_ipcmsg_run(self.communication_id);}
+    }
+    pub fn is_connected(&self) -> bool {
+        unsafe {kd_ipcmsg_is_connect(self.communication_id) != 0}
     }
     pub fn send_only(self, mut message: Message) -> Result<(),()> {
         unsafe {
@@ -76,7 +97,7 @@ impl Connection {
             else {return Ok(Message::new(**response_message))}
         }
     }
-    pub fn send_response_async<F>(self,mut message: Message, handel_response : Option<unsafe extern "C" fn(*mut k230_sys::IPCMSG_MESSAGE_S)>) -> Result<(), ()>{ 
+    pub fn send_response_async(self,mut message: Message, handel_response : Option<unsafe extern "C" fn(*mut k230_sys::IPCMSG_MESSAGE_S)>) -> Result<(), ()>{ 
         unsafe {
             if 0 != kd_ipcmsg_send_async(self.communication_id, &mut message.0,handel_response) {return Err(())}
             else {return Ok(())}
@@ -87,7 +108,7 @@ impl Connection {
 impl Drop for Connection {
     fn drop(&mut self) {
         unsafe {
-            kd_ipcmsg_disconnect(self.communication_id);
+            // kd_ipcmsg_disconnect(self.communication_id);
         }
     }
 }
