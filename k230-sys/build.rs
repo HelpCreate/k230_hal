@@ -17,6 +17,6 @@ fn main() {
 
     // Link against the ipcmsg library
     println!("cargo:rustc-link-lib=static=ipcmsg");
-    // println!("cargo:rustc-link-arg=-T{}/src/common/cdk/user/component/ipcmsg/sample/sample_sender/linker_scripts/riscv64/link.lds",sdk_path);
+    println!("cargo:rustc-link-arg=-T{}/src/common/cdk/user/component/ipcmsg/sample/sample_sender/linker_scripts/riscv64/link.lds",sdk_path);
 }
 
